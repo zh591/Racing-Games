@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D赛车游戏 - 自动驾驶完美修复版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #2c3e50);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+        
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            height: 90vh;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        canvas {
+            display: block;
+            background: linear-gradient(to bottom, #87CEEB, #1E90FF);
+            width: 100%;
+            height: 100%;
+        }
+        
+        #settings {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(20, 30, 40, 0.92);
+            padding: 25px;
+            border-radius: 12px;
+            width: 320px;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+            transition: transform 0.3s ease;
+            z-index: 10;
+        }
+        
+        #settings.hidden {
+            transform: translateX(-350px);
+        }
+        
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+        }
+        
+        h2 {
+            color: #FFD700;
+            font-size: 26px;
+            text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+            letter-spacing: 0.5px;
+        }
+        
+        .close-btn {
+            background: rgba(255, 50, 50, 0.4);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close-btn:hover {
+            background: rgba(255, 80, 80, 0.7);
+            transform: scale(1.1);
+        }
+        
+        .slider-container {
+            margin: 18px 0;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .slider-label span:first-child {
+            color: #FFA500;
+            font-weight: 500;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 10px;
+            background: rgba(80, 80, 80, 0.6);
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            background: #FFD700;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.9);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+        }
+        
+        .control-info {
+            position: absolute;
+            bottom: 25px;
+            left: 25px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 15px;
+            line-height: 1.7;
+            max-width: 300px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .control-info h3 {
+            color: #FFD700;
+            margin-bottom: 8px;
+            font-size: 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 5px;
+        }
+        
+        .status-bar {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 12px 18px;
+            border-radius: 10px;
+            font-size: 15px;
+            text-align: right;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .toggle-btn {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            background: linear-gradient(to bottom, #FFD700, #FFA500);
+            color: #222;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 18px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            z-index: 5;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .toggle-btn:hover {
+            background: linear-gradient(to bottom, #FFE055, #FFB830);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        .title {
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 32px;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 0 0 12px rgba(0, 0, 0, 0.9);
+            letter-spacing: 1.5px;
+            text-align: center;
+            text-transform: uppercase;
+            padding: 5px 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            z-index: 5;
+        }
+        
+        .title span {
+            display: block;
+            font-size: 16px;
+            color: #FFF;
+            margin-top: 5px;
+            font-weight: normal;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+        
+        .ai-status {
+            position: absolute;
+            bottom: 25px;
+            right: 25px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 15px;
+            text-align: left;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 300px;
+        }
+        
+        .ai-status h3 {
+            color: #00BFFF;
+            margin-bottom: 8px;
+            font-size: 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 5px;
+        }
+        
+        .loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 20, 30, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            transition: opacity 0.5s ease;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid rgba(255, 215, 0, 0.3);
+            border-top: 6px solid #FFD700;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 25px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-size: 24px;
+            color: #FFD700;
+            text-align: center;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+        
+        .logo {
+            font-size: 48px;
+            color: #FFD700;
+            margin-bottom: 30px;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
+        }
+        
+        .start-btn {
+            margin-top: 30px;
+            background: linear-gradient(to bottom, #FFD700, #FFA500);
+            color: #222;
+            border: none;
+            border-radius: 8px;
+            padding: 14px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        .start-btn:hover {
+            background: linear-gradient(to bottom, #FFE055, #FFB830);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+        }
+        
+        .error-message {
+            color: #ff6b6b;
+            font-size: 18px;
+            margin-top: 20px;
+            text-align: center;
+            max-width: 80%;
+            line-height: 1.6;
+            display: none;
+        }
+        
+        .mode-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 24px;
+            text-align: center;
+            backdrop-filter: blur(4px);
+            border: 2px solid #FFD700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+            transition: all 0.3s ease;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 15;
+        }
+        
+        .mode-indicator.visible {
+            opacity: 1;
+            animation: fadeOut 2s forwards;
+        }
+        
+        @keyframes fadeOut {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+        }
+        
+        .debug-info {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: center;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 600px;
+            display: none;
+        }
+        
+        .fix-notice {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 100, 0, 0.7);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 16px;
+            color: #7FFF00;
+            text-align: center;
+            backdrop-filter: blur(4px);
+            border: 1px solid #00FF00;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="loading-screen" id="loadingScreen">
+            <div class="logo">🏎️ RACER PRO</div>
+            <div class="loading-spinner"></div>
+            <div class="loading-text">正在初始化3D引擎，请稍候...</div>
+            <div class="error-message" id="errorMessage"></div>
+            <button class="start-btn" id="startBtn" style="display:none;">开始游戏</button>
+        </div>
+        
+        <div class="title">3D赛车游戏<span>自动驾驶完美修复版</span></div>
+        
+        <canvas id="glCanvas"></canvas>
+        
+        <button id="toggleSettings" class="toggle-btn">显示设置</button>
+        
+        <div id="settings" class="hidden">
+            <div class="settings-header">
+                <h2>游戏设置</h2>
+                <button class="close-btn">×</button>
+            </div>
+            
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>道路宽度</span>
+                    <span id="trackWidthValue">6.0</span>
+                </div>
+                <input type="range" id="trackWidth" min="4" max="20" step="0.1" value="6">
+            </div>
+            
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>背景色 R</span>
+                    <span id="bgRValue">0.6</span>
+                </div>
+                <input type="range" id="bgR" min="0" max="100" value="60">
+            </div>
+            
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>背景色 G</span>
+                    <span id="bgGValue">0.8</span>
+                </div>
+                <input type="range" id="bgG" min="0" max="100" value="80">
+            </div>
+            
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>背景色 B</span>
+                    <span id="bgBValue">1.0</span>
+                </div>
+                <input type="range" id="bgB" min="0" max="100" value="100">
+            </div>
+            
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>自动驾驶速度</span>
+                    <span id="aiSpeedValue">0.70</span>
+                </div>
+                <input type="range" id="aiSpeed" min="30" max="100" value="70">
+            </div>
+            
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>标线亮度</span>
+                    <span id="lineBrightnessValue">1.0</span>
+                </div>
+                <input type="range" id="lineBrightness" min="50" max="150" value="100">
+            </div>
+            
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>高度平滑度</span>
+                    <span id="heightSmoothValue">0.1</span>
+                </div>
+                <input type="range" id="heightSmooth" min="1" max="30" value="10">
+            </div>
+            
+            <div style="margin-top: 25px; text-align: center;">
+                <button id="resetBtn" style="background: linear-gradient(to bottom, #3498db, #1a5f9e); color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-size: 16px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">重置赛道</button>
+            </div>
+        </div>
+        
+        <div class="control-info">
+            <h3>控制说明</h3>
+            <p>W/S: 加速/刹车</p>
+            <p>A/D: 左转/右转</p>
+            <p>空格键: 切换自动驾驶</p>
+            <p>ESC: 显示/隐藏设置</p>
+            <p>R: 重置车辆位置</p>
+            <p>F: 显示/隐藏调试信息</p>
+        </div>
+        
+        <div class="status-bar">
+            <p>速度: <span id="speed">0.00</span> m/s</p>
+            <p>模式: <span id="mode">手动驾驶</span></p>
+            <p>赛道长度: <span id="trackLength">0</span> 米</p>
+        </div>
+        
+        <div class="ai-status">
+            <h3>自动驾驶状态</h3>
+            <p>目标点: <span id="aiTarget">0</span></p>
+            <p>距离赛道: <span id="distToTrack">0.0</span> 米</p>
+            <p>转向角度: <span id="aiSteering">0.0</span>°</p>
+            <p>车辆高度: <span id="carHeight">0.25</span> 米</p>
+        </div>
+        
+        <div class="debug-info" id="debugInfo">
+            调试信息: 等待数据...
+        </div>
+        
+        <div class="mode-indicator" id="modeIndicator">
+            自动驾驶已激活
+        </div>
+        
+        <div class="fix-notice">
+            自动驾驶方向问题与车辆跳动问题已修复
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let canvas, gl;
+        let camX = 0.0, camY = 1.0, camZ = 5.0;
+        let g_lookX = 0.0, g_lookY = 0.0, g_lookZ = 0.0;
+        let keys = {};
+        let carX = 0.0, carY = 0.25, carZ = 0.0, carYaw = 0.0, carSpeed = 0.0;
+        let autoDrive = false;
+        let showSettings = false;
+        let trackWidth = 6.0;
+        let bgColor = [0.6, 0.8, 1.0];
+        let trackPoints = [];
+        let carTrackIdx = 0, carTrackT = 0.0;
+        let lastX = 0, lastY = 0.01, lastZ = 0, lastDir = 0;
+        let program;
+        let uProjectionMatrix, uViewMatrix;
+        let lastTime = 0;
+        let aiSpeedFactor = 0.7;
+        let aiSteeringAngle = 0;
+        let aiTargetIdx = 0;
+        let lineBrightness = 1.0;
+        let isInitialized = false;
+        let debugMode = false;
+        let heightSmoothFactor = 0.1; // 高度平滑因子
+        let prevNearestIndex = 0; // 上一个最近点索引
+        let targetSteeringAngle = 0; // 目标转向角度（用于平滑转向）
+        let pathPrediction = 0; // 路径预测因子
+        
+        // WebGL初始化
+        function initWebGL() {
+            try {
+                canvas = document.getElementById('glCanvas');
+                
+                // 尝试获取WebGL上下文
+                gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                
+                if (!gl) {
+                    throw new Error('无法获取WebGL上下文。您的浏览器或设备可能不支持WebGL。');
+                }
+                
+                // 创建着色器程序
+                const vsSource = `
+                    attribute vec4 aPosition;
+                    attribute vec3 aColor;
+                    uniform mat4 uProjectionMatrix;
+                    uniform mat4 uViewMatrix;
+                    varying vec3 vColor;
+                    void main() {
+                        gl_Position = uProjectionMatrix * uViewMatrix * aPosition;
+                        vColor = aColor;
+                    }
+                `;
+                
+                const fsSource = `
+                    precision mediump float;
+                    varying vec3 vColor;
+                    void main() {
+                        gl_FragColor = vec4(vColor, 1.0);
+                    }
+                `;
+                
+                program = createProgram(gl, vsSource, fsSource);
+                if (!program) {
+                    throw new Error('无法创建着色器程序');
+                }
+                
+                gl.useProgram(program);
+                
+                // 获取uniform位置
+                uProjectionMatrix = gl.getUniformLocation(program, 'uProjectionMatrix');
+                uViewMatrix = gl.getUniformLocation(program, 'uViewMatrix');
+                
+                if (!uProjectionMatrix || !uViewMatrix) {
+                    throw new Error('无法获取uniform位置');
+                }
+                
+                // 设置视口
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+                
+                // 启用深度测试
+                gl.enable(gl.DEPTH_TEST);
+                gl.clearColor(bgColor[0], bgColor[1], bgColor[2], 1.0);
+                
+                // 初始化赛道
+                generateTrack();
+                
+                // 显示开始按钮
+                document.getElementById('startBtn').style.display = 'block';
+                document.querySelector('.loading-text').textContent = '引擎初始化完成！点击开始游戏';
+                
+                return true;
+            } catch (error) {
+                console.error('WebGL初始化错误:', error);
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('errorMessage').innerHTML = `
+                    <strong>初始化错误:</strong> ${error.message}<br><br>
+                    可能原因：<br>
+                    - 您的浏览器不支持WebGL<br>
+                    - 显卡驱动需要更新<br>
+                    - 硬件加速被禁用<br><br>
+                    请尝试使用Chrome或Firefox最新版本
+                `;
+                document.querySelector('.loading-spinner').style.display = 'none';
+                return false;
+            }
+        }
+        
+        // 创建着色器程序
+        function createProgram(gl, vsSource, fsSource) {
+            const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+            const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+            
+            if (!vertexShader || !fragmentShader) {
+                return null;
+            }
+            
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+            
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('无法初始化着色器程序: ' + gl.getProgramInfoLog(program));
+                return null;
+            }
+            
+            return program;
+        }
+        
+        // 加载着色器
+        function loadShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                const error = '编译着色器时出错: ' + gl.getShaderInfoLog(shader);
+                console.error(error);
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('errorMessage').textContent = error;
+                return null;
+            }
+            
+            return shader;
+        }
+        
+        // 调整画布大小
+        function resizeCanvas() {
+            if (!canvas) return;
+            
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            
+            // 设置投影矩阵
+            const aspect = canvas.width / canvas.height;
+            const projMatrix = mat4.create();
+            mat4.perspective(projMatrix, 60 * Math.PI/180, aspect, 0.1, 100.0);
+            gl.uniformMatrix4fv(uProjectionMatrix, false, projMatrix);
+        }
+        
+        // 赛道生成函数
+        function generateTrackSegment(segCount = 50) {
+            const tempPoints = [];
+            let x = lastX, y = lastY, z = lastZ, dir = lastDir;
+            let segs = 0;
+            
+            while (segs < segCount) {
+                // 直路
+                const straightLen = 10 + Math.random() * 15;
+                const slope = -0.04 + Math.random() * 0.08;
+                const straightPts = Math.floor(straightLen / 2.0);
+                const y0 = y;
+                const y1 = y + slope * straightLen;
+                
+                for (let i = 0; i < straightPts && segs < segCount; ++i, ++segs) {
+                    const t = i / straightPts;
+                    const py = y0 * (1 - t) + y1 * t;
+                    tempPoints.push({x, y: py, z, dir});
+                    const rad = dir * Math.PI / 180.0;
+                    x += Math.sin(rad) * 2.0;
+                    z += Math.cos(rad) * 2.0;
+                }
+                y = y1;
+                
+                // 弯道
+                if (segs < segCount) {
+                    let turnAngle = 25 + Math.random() * 50;
+                    if (Math.random() > 0.5) turnAngle = -turnAngle;
+                    const turnRadius = 10 + Math.random() * 15;
+                    const arcLen = Math.abs(turnRadius * turnAngle * Math.PI / 180.0);
+                    const arcPts = Math.floor(arcLen / 2.0);
+                    const startDir = dir;
+                    const endDir = dir + turnAngle;
+                    const y2 = y + (-0.04 + Math.random() * 0.08) * arcLen;
+                    
+                    for (let i = 0; i < arcPts && segs < segCount; ++i, ++segs) {
+                        const t = i / arcPts;
+                        const curDir = startDir + (endDir - startDir) * t;
+                        const rad = curDir * Math.PI / 180.0;
+                        const py = y * (1 - t) + y2 * t;
+                        tempPoints.push({x, y: py, z, dir: curDir});
+                        x += Math.sin(rad) * 2.0;
+                        z += Math.cos(rad) * 2.0;
+                    }
+                    y = y2;
+                    dir = endDir;
+                }
+            }
+            
+            trackPoints = trackPoints.concat(tempPoints);
+            lastX = x;
+            lastY = y;
+            lastZ = z;
+            lastDir = dir;
+        }
+        
+        // 生成初始赛道
+        function generateTrack() {
+            trackPoints = [];
+            lastX = 0;
+            lastY = 0.01;
+            lastZ = 0;
+            lastDir = 0;
+            generateTrackSegment(60);
+            document.getElementById('trackLength').textContent = Math.floor(trackPoints.length * 2);
+        }
+        
+        // 尝试扩展赛道
+        function tryExtendTrack() {
+            // 检查是否需要扩展赛道
+            const distanceToEnd = Math.sqrt(
+                Math.pow(carX - lastX, 2) + 
+                Math.pow(carZ - lastZ, 2)
+            );
+            
+            if (distanceToEnd < 120) {
+                generateTrackSegment(30);
+                document.getElementById('trackLength').textContent = Math.floor(trackPoints.length * 2);
+            }
+        }
+        
+        // 改进的最近点搜索算法 - 使用路径预测
+        function findNearestTrackPoint() {
+            let minDist = Infinity;
+            let nearestIdx = prevNearestIndex;
+            
+            // 基于速度和方向预测搜索起点
+            const prediction = Math.min(10, Math.max(2, Math.floor(Math.abs(carSpeed) * 10)));
+            const searchStart = Math.max(0, prevNearestIndex - prediction);
+            const searchEnd = Math.min(trackPoints.length, prevNearestIndex + 40 + prediction);
+            
+            for (let i = searchStart; i < searchEnd; i++) {
+                const dx = carX - trackPoints[i].x;
+                const dz = carZ - trackPoints[i].z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+                
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestIdx = i;
+                }
+            }
+            
+            prevNearestIndex = nearestIdx;
+            return { index: nearestIdx, distance: minDist, height: trackPoints[nearestIdx].y };
+        }
+        
+        // 更新车辆位置 - 修复自动驾驶路径跟踪问题
+        function updateCar(deltaTime) {
+            const accel = 0.01;
+            const maxSpeed = 0.35;
+            const turnSpeed = 2.0;
+            
+            // 找到最近的赛道点
+            const nearest = findNearestTrackPoint();
+            carTrackIdx = nearest.index;
+            const targetHeight = nearest.height + 0.25;
+            
+            // 高度平滑过渡
+            carY += (targetHeight - carY) * heightSmoothFactor;
+            document.getElementById('carHeight').textContent = carY.toFixed(2);
+            
+            if (autoDrive) {
+                // 改进的自动驾驶逻辑 - 动态目标点选择
+                const lookAheadPoints = Math.max(10, Math.min(30, Math.floor(Math.abs(carSpeed) * 80)));
+                aiTargetIdx = Math.min(nearest.index + lookAheadPoints, trackPoints.length - 1);
+                const targetPoint = trackPoints[aiTargetIdx];
+                
+                // 计算车辆到目标点的向量
+                const toTargetX = targetPoint.x - carX;
+                const toTargetZ = targetPoint.z - carZ;
+                
+                // 计算车辆方向向量
+                const carDirRad = carYaw * Math.PI / 180.0;
+                const carDirX = Math.sin(carDirRad);
+                const carDirZ = Math.cos(carDirRad);
+                
+                // 计算点积和叉积
+                const dot = carDirX * toTargetX + carDirZ * toTargetZ;
+                const cross = carDirX * toTargetZ - carDirZ * toTargetX;
+                
+                // 计算目标角度（弧度），然后转为角度
+                let targetAngle = Math.atan2(cross, dot) * 180.0 / Math.PI;
+                
+                // 计算目标转向角度（使用平滑）
+                targetSteeringAngle = -targetAngle * 0.15;
+                
+                // 限制目标转向角度
+                if (targetSteeringAngle > 35) targetSteeringAngle = 35;
+                if (targetSteeringAngle < -35) targetSteeringAngle = -35;
+                
+                // 平滑转向：实际转向角度逐步接近目标转向角度
+                aiSteeringAngle += (targetSteeringAngle - aiSteeringAngle) * 0.2;
+                
+                // 应用转向
+                carYaw += aiSteeringAngle * 0.25;
+                
+                // 设置速度
+                carSpeed = maxSpeed * aiSpeedFactor;
+                
+                // 更新车辆位置
+                const yawRad = carYaw * Math.PI / 180.0;
+                carX += Math.sin(yawRad) * carSpeed;
+                carZ += Math.cos(yawRad) * carSpeed;
+                
+                // 位置修正 - 如果偏离赛道，向赛道中心拉回
+                if (nearest.distance > trackWidth * 0.4) {
+                    // 计算车辆到最近点的方向
+                    const toNearestX = trackPoints[nearest.index].x - carX;
+                    const toNearestZ = trackPoints[nearest.index].z - carZ;
+                    
+                    // 计算方向向量长度
+                    const dist = Math.sqrt(toNearestX * toNearestX + toNearestZ * toNearestZ);
+                    
+                    if (dist > 0.01) {
+                        // 单位化方向向量
+                        const dirX = toNearestX / dist;
+                        const dirZ = toNearestZ / dist;
+                        
+                        // 根据偏离程度动态调整修正因子
+                        let correctionFactor = 0.05;
+                        if (nearest.distance > trackWidth * 0.6) {
+                            correctionFactor = 0.12;
+                        } else if (nearest.distance > trackWidth * 0.8) {
+                            correctionFactor = 0.2;
+                        }
+                        
+                        // 将车辆位置向赛道中心移动
+                        carX += dirX * correctionFactor;
+                        carZ += dirZ * correctionFactor;
+                    }
+                }
+                
+                // 更新AI状态显示
+                document.getElementById('aiTarget').textContent = aiTargetIdx;
+                document.getElementById('distToTrack').textContent = nearest.distance.toFixed(1);
+                document.getElementById('aiSteering').textContent = aiSteeringAngle.toFixed(1);
+            } else {
+                // 手动驾驶模式
+                if (keys['W']) carSpeed += accel;
+                if (keys['S']) carSpeed -= accel;
+                if (carSpeed > maxSpeed) carSpeed = maxSpeed;
+                if (carSpeed < -maxSpeed * 0.5) carSpeed = -maxSpeed * 0.5;
+                carSpeed *= 0.98;
+                
+                if (keys['A']) carYaw += turnSpeed * (carSpeed !== 0 ? (carSpeed > 0 ? 1 : -1) : 0);
+                if (keys['D']) carYaw -= turnSpeed * (carSpeed !== 0 ? (carSpeed > 0 ? 1 : -1) : 0);
+                
+                const yawRad = carYaw * Math.PI / 180.0;
+                carX += Math.sin(yawRad) * carSpeed;
+                carZ += Math.cos(yawRad) * carSpeed;
+            }
+            
+            // 更新UI
+            document.getElementById('speed').textContent = Math.abs(carSpeed * 30).toFixed(2);
+            document.getElementById('mode').textContent = autoDrive ? '自动驾驶' : '手动驾驶';
+            
+            tryExtendTrack();
+        }
+        
+        // 更新摄像机位置 - 更平滑的摄像机跟随
+        function updateCamera() {
+            const camDist = 4.0;
+            const camHeight = 2.0;
+            const yawRad = carYaw * Math.PI / 180.0;
+            
+            // 计算目标摄像机位置
+            const targetCamX = carX - Math.sin(yawRad) * camDist;
+            const targetCamY = carY + camHeight;
+            const targetCamZ = carZ - Math.cos(yawRad) * camDist;
+            
+            // 平滑摄像机移动
+            camX += (targetCamX - camX) * 0.1;
+            camY += (targetCamY - camY) * 0.1;
+            camZ += (targetCamZ - camZ) * 0.1;
+            
+            // 计算目标看向点（车头前方）
+            const lookAhead = 3.0;
+            const targetLookX = carX + Math.sin(yawRad) * lookAhead;
+            const targetLookY = carY + 0.5;
+            const targetLookZ = carZ + Math.cos(yawRad) * lookAhead;
+            
+            // 平滑看向点移动
+            g_lookX += (targetLookX - g_lookX) * 0.1;
+            g_lookY += (targetLookY - g_lookY) * 0.1;
+            g_lookZ += (targetLookZ - g_lookZ) * 0.1;
+        }
+        
+        // 绘制赛道
+        function drawTrack() {
+            if (trackPoints.length < 2) return;
+            
+            const vertices = [];
+            const colors = [];
+            
+            // 赛道面
+            for (let i = 0; i < trackPoints.length; i++) {
+                const p = trackPoints[i];
+                const dirRad = p.dir * Math.PI / 180.0;
+                const dx = Math.cos(dirRad) * (trackWidth * 0.5);
+                const dz = -Math.sin(dirRad) * (trackWidth * 0.5);
+                
+                // 赛道顶点
+                vertices.push(p.x - dx, p.y + 0.01, p.z - dz);
+                vertices.push(p.x + dx, p.y + 0.01, p.z + dz);
+                
+                // 赛道颜色 (灰色)
+                colors.push(0.25, 0.25, 0.25);
+                colors.push(0.25, 0.25, 0.25);
+            }
+            
+            // 创建缓冲区
+            const positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            
+            const colorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            
+            // 设置属性指针
+            const positionLocation = gl.getAttribLocation(program, 'aPosition');
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(positionLocation);
+            
+            const colorLocation = gl.getAttribLocation(program, 'aColor');
+            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+            gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(colorLocation);
+            
+            // 绘制赛道面
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, trackPoints.length * 2);
+            
+            // 绘制赛道标线
+            drawTrackLines();
+        }
+        
+        // 绘制赛道标线
+        function drawTrackLines() {
+            if (trackPoints.length < 2) return;
+            
+            // 绘制中间双黄线
+            drawTrackLine(0.02, [1.0 * lineBrightness, 1.0 * lineBrightness, 0.0], 0.2, 0.03, 0.2);
+            drawTrackLine(0.02, [1.0 * lineBrightness, 1.0 * lineBrightness, 0.0], 0.2, 0.03, -0.2);
+            
+            // 绘制两侧白色实线
+            drawTrackLine(0.025, [1.0 * lineBrightness, 1.0 * lineBrightness, 1.0 * lineBrightness], 0.25, 0.035, 0.48);
+            drawTrackLine(0.025, [1.0 * lineBrightness, 1.0 * lineBrightness, 1.0 * lineBrightness], 0.25, 0.035, -0.48);
+        }
+        
+        // 绘制单条标线
+        function drawTrackLine(offsetY, color, width, height, offsetX) {
+            const vertices = [];
+            const colors = [];
+            
+            for (let i = 0; i < trackPoints.length; i++) {
+                const p = trackPoints[i];
+                const dirRad = p.dir * Math.PI / 180.0;
+                const dx = Math.cos(dirRad) * (offsetX * trackWidth);
+                const dz = -Math.sin(dirRad) * (offsetX * trackWidth);
+                
+                // 标线顶点
+                vertices.push(
+                    p.x - dx, p.y + offsetY + 0.03, p.z - dz,
+                    p.x - dx, p.y + offsetY + 0.03 + height, p.z - dz,
+                    p.x - dx + Math.cos(dirRad) * width, p.y + offsetY + 0.03, p.z - dz - Math.sin(dirRad) * width,
+                    p.x - dx + Math.cos(dirRad) * width, p.y + offsetY + 0.03 + height, p.z - dz - Math.sin(dirRad) * width
+                );
+                
+                // 标线颜色
+                for (let j = 0; j < 4; j++) {
+                    colors.push(color[0], color[1], color[2]);
+                }
+            }
+            
+            // 创建缓冲区
+            const positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            
+            const colorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            
+            // 设置属性指针
+            const positionLocation = gl.getAttribLocation(program, 'aPosition');
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(positionLocation);
+            
+            const colorLocation = gl.getAttribLocation(program, 'aColor');
+            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+            gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(colorLocation);
+            
+            // 绘制标线
+            for (let i = 0; i < trackPoints.length - 1; i++) {
+                const startIdx = i * 4;
+                gl.drawArrays(gl.TRIANGLE_STRIP, startIdx, 4);
+            }
+        }
+        
+        // 绘制车辆
+        function drawCar() {
+            // 简化车辆模型 - 一个立方体
+            const vertices = [
+                // 车身底部
+                -0.5, -0.25, -1.0,  0.5, -0.25, -1.0,  -0.5, -0.25, 1.0,
+                0.5, -0.25, -1.0,   0.5, -0.25, 1.0,   -0.5, -0.25, 1.0,
+                
+                // 车身顶部
+                -0.5, 0.25, -1.0,  0.5, 0.25, -1.0,  -0.5, 0.25, 1.0,
+                0.5, 0.25, -1.0,   0.5, 0.25, 1.0,   -0.5, 0.25, 1.0,
+                
+                // 前部
+                -0.5, -0.25, 1.0,  0.5, -0.25, 1.0,  -0.5, 0.25, 1.0,
+                0.5, -0.25, 1.0,   0.5, 0.25, 1.0,   -0.5, 0.25, 1.0,
+                
+                // 后部
+                -0.5, -0.25, -1.0,  0.5, -0.25, -1.0,  -0.5, 0.25, -1.0,
+                0.5, -0.25, -1.0,   0.5, 0.25, -1.0,   -0.5, 0.25, -1.0,
+                
+                // 左侧
+                -0.5, -0.25, -1.0,  -0.5, -0.25, 1.0,  -0.5, 0.25, -1.0,
+                -0.5, -0.25, 1.0,   -0.5, 0.25, 1.0,   -0.5, 0.25, -1.0,
+                
+                // 右侧
+                0.5, -0.25, -1.0,  0.5, -0.25, 1.0,  0.5, 0.25, -1.0,
+                0.5, -0.25, 1.0,   0.5, 0.25, 1.0,   0.5, 0.25, -1.0,
+                
+                // 车顶
+                -0.3, 0.25, -0.8,  0.3, 0.25, -0.8,  -0.3, 0.25, 0.8,
+                0.3, 0.25, -0.8,   0.3, 0.25, 0.8,   -0.3, 0.25, 0.8
+            ];
+            
+            const colors = [];
+            // 车身颜色 (蓝色)
+            for (let i = 0; i < 36; i++) {
+                colors.push(0.2, 0.2, 0.8); // 蓝色车身
+            }
+            // 车顶颜色 (黄色)
+            for (let i = 0; i < 6; i++) {
+                colors.push(0.9, 0.9, 0.2); // 黄色车顶
+            }
+            
+            // 创建缓冲区
+            const positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            
+            const colorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            
+            // 设置属性指针
+            const positionLocation = gl.getAttribLocation(program, 'aPosition');
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(positionLocation);
+            
+            const colorLocation = gl.getAttribLocation(program, 'aColor');
+            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+            gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(colorLocation);
+            
+            // 创建模型矩阵（车辆变换）
+            const modelMatrix = mat4.create();
+            mat4.translate(modelMatrix, modelMatrix, [carX, carY, carZ]);
+            mat4.rotateY(modelMatrix, modelMatrix, carYaw * Math.PI / 180.0);
+            
+            // 计算模型视图矩阵
+            const viewMatrix = mat4.create();
+            mat4.lookAt(viewMatrix, [camX, camY, camZ], [g_lookX, g_lookY, g_lookZ], [0, 1, 0]);
+            
+            const modelViewMatrix = mat4.create();
+            mat4.multiply(modelViewMatrix, viewMatrix, modelMatrix);
+            
+            // 应用模型视图矩阵
+            gl.uniformMatrix4fv(uViewMatrix, false, modelViewMatrix);
+            
+            // 绘制车辆
+            gl.drawArrays(gl.TRIANGLES, 0, 42);
+        }
+        
+        // 渲染循环
+        function render(time) {
+            if (!isInitialized) {
+                requestAnimationFrame(render);
+                return;
+            }
+            
+            // 计算时间增量
+            const deltaTime = time - (lastTime || time);
+            lastTime = time;
+            
+            // 清除画布
+            gl.clearColor(bgColor[0], bgColor[1], bgColor[2], 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            
+            // 设置视图矩阵
+            const viewMatrix = mat4.create();
+            mat4.lookAt(viewMatrix, [camX, camY, camZ], [g_lookX, g_lookY, g_lookZ], [0, 1, 0]);
+            gl.uniformMatrix4fv(uViewMatrix, false, viewMatrix);
+            
+            // 更新游戏状态
+            if (!showSettings) {
+                updateCar(deltaTime / 16.67); // 标准化时间增量
+                updateCamera();
+            }
+            
+            // 绘制场景
+            drawTrack();
+            drawCar();
+            
+            // 更新调试信息
+            if (debugMode) {
+                const nearest = findNearestTrackPoint();
+                const debugText = `车辆位置: (${carX.toFixed(1)}, ${carZ.toFixed(1)} | 最近赛道点: ${nearest.index} | 距离: ${nearest.distance.toFixed(2)} | 赛道点总数: ${trackPoints.length}`;
+                document.getElementById('debugInfo').textContent = debugText;
+            }
+            
+            // 继续渲染循环
+            requestAnimationFrame(render);
+        }
+        
+        // 初始化事件监听
+        function initEvents() {
+            // 键盘事件
+            window.addEventListener('keydown', (e) => {
+                keys[e.key.toUpperCase()] = true;
+                
+                if (e.key === 'Escape') {
+                    showSettings = !showSettings;
+                    document.getElementById('settings').classList.toggle('hidden');
+                    document.getElementById('toggleSettings').textContent = 
+                        showSettings ? '隐藏设置' : '显示设置';
+                }
+                
+                if (e.key === ' ') {
+                    autoDrive = !autoDrive;
+                    
+                    // 重置转向角度
+                    targetSteeringAngle = 0;
+                    aiSteeringAngle = 0;
+                    
+                    // 重置路径预测
+                    pathPrediction = 0;
+                    
+                    // 显示模式切换提示
+                    const indicator = document.getElementById('modeIndicator');
+                    indicator.textContent = autoDrive ? "自动驾驶已激活" : "手动驾驶已激活";
+                    indicator.classList.add('visible');
+                    setTimeout(() => {
+                        indicator.classList.remove('visible');
+                    }, 2000);
+                    
+                    // 防止空格键滚动页面
+                    e.preventDefault();
+                }
+                
+                // 重置车辆位置
+                if (e.key === 'R') {
+                    const nearest = findNearestTrackPoint();
+                    if (nearest.index < trackPoints.length) {
+                        carX = trackPoints[nearest.index].x;
+                        carY = trackPoints[nearest.index].y + 0.25;
+                        carZ = trackPoints[nearest.index].z;
+                        carYaw = trackPoints[nearest.index].dir;
+                        carSpeed = 0;
+                        carTrackIdx = nearest.index;
+                        prevNearestIndex = nearest.index;
+                        
+                        // 重置转向角度
+                        targetSteeringAngle = 0;
+                        aiSteeringAngle = 0;
+                    }
+                }
+                
+                // 切换调试模式
+                if (e.key === 'F' || e.key === 'f') {
+                    debugMode = !debugMode;
+                    document.getElementById('debugInfo').style.display = debugMode ? 'block' : 'none';
+                }
+            });
+            
+            window.addEventListener('keyup', (e) => {
+                keys[e.key.toUpperCase()] = false;
+            });
+            
+            // 设置滑块事件
+            document.getElementById('trackWidth').addEventListener('input', (e) => {
+                trackWidth = parseFloat(e.target.value);
+                document.getElementById('trackWidthValue').textContent = trackWidth.toFixed(1);
+            });
+            
+            document.getElementById('bgR').addEventListener('input', (e) => {
+                bgColor[0] = e.target.value / 100;
+                document.getElementById('bgRValue').textContent = bgColor[0].toFixed(2);
+                gl.clearColor(bgColor[0], bgColor[1], bgColor[2], 1.0);
+            });
+            
+            document.getElementById('bgG').addEventListener('input', (e) => {
+                bgColor[1] = e.target.value / 100;
+                document.getElementById('bgGValue').textContent = bgColor[1].toFixed(2);
+                gl.clearColor(bgColor[0], bgColor[1], bgColor[2], 1.0);
+            });
+            
+            document.getElementById('bgB').addEventListener('input', (e) => {
+                bgColor[2] = e.target.value / 100;
+                document.getElementById('bgBValue').textContent = bgColor[2].toFixed(2);
+                gl.clearColor(bgColor[0], bgColor[1], bgColor[2], 1.0);
+            });
+            
+            document.getElementById('aiSpeed').addEventListener('input', (e) => {
+                aiSpeedFactor = e.target.value / 100;
+                document.getElementById('aiSpeedValue').textContent = aiSpeedFactor.toFixed(2);
+            });
+            
+            document.getElementById('lineBrightness').addEventListener('input', (e) => {
+                lineBrightness = e.target.value / 100;
+                document.getElementById('lineBrightnessValue').textContent = lineBrightness.toFixed(2);
+            });
+            
+            document.getElementById('heightSmooth').addEventListener('input', (e) => {
+                heightSmoothFactor = e.target.value / 100;
+                document.getElementById('heightSmoothValue').textContent = heightSmoothFactor.toFixed(2);
+            });
+            
+            // 关闭按钮
+            document.querySelector('.close-btn').addEventListener('click', () => {
+                showSettings = false;
+                document.getElementById('settings').classList.add('hidden');
+                document.getElementById('toggleSettings').textContent = '显示设置';
+            });
+            
+            // 切换设置按钮
+            document.getElementById('toggleSettings').addEventListener('click', () => {
+                showSettings = !showSettings;
+                document.getElementById('settings').classList.toggle('hidden');
+                document.getElementById('toggleSettings').textContent = 
+                    showSettings ? '隐藏设置' : '显示设置';
+            });
+            
+            // 重置赛道按钮
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                generateTrack();
+                carX = 0;
+                carY = 0.25;
+                carZ = 0;
+                carYaw = 0;
+                carSpeed = 0;
+                carTrackIdx = 0;
+                carTrackT = 0;
+                prevNearestIndex = 0;
+                targetSteeringAngle = 0;
+                aiSteeringAngle = 0;
+            });
+            
+            // 开始游戏按钮
+            document.getElementById('startBtn').addEventListener('click', () => {
+                document.getElementById('loadingScreen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loadingScreen').style.display = 'none';
+                    isInitialized = true;
+                    lastTime = performance.now();
+                    requestAnimationFrame(render);
+                }, 500);
+            });
+        }
+        
+        // 页面加载时初始化
+        window.onload = function() {
+            initEvents();
+            
+            // 尝试初始化WebGL
+            if (initWebGL()) {
+                console.log("WebGL initialized successfully");
+            }
+        };
+    </script>
+</body>
+</html>
